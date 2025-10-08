@@ -10,11 +10,9 @@ from cc_simple_server.database import get_db_connection
 init_db()
 
 app = FastAPI()
-
 ############################################
 # Edit the code below this line
 ############################################
-
 
 @app.get("/")
 async def read_root():
@@ -36,8 +34,16 @@ async def create_task(task_data: TaskCreate):
     Returns:
         TaskRead: The created task data
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Not implemented")
-
+    conn = get_db_connection()
+    cursor = conn.execute(
+        "INSERT INTO tasks (title, description, completed) VALUES (?, ?, ?)",
+        (task_data.title, task_data.description, task_data.completed)
+    )
+    conn.commit()
+    task_id = cursor.lastrowid
+    conn.close()
+    return TaskRead(id=task_id, **task_data.model_dump())
+    # raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Not implemented")
 
 # GET ROUTE to get all tasks
 @app.get("/tasks/", response_model=list[TaskRead])
@@ -51,7 +57,12 @@ async def get_tasks():
     Returns:
         list[TaskRead]: A list of all tasks in the database
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Not implemented")
+    conn = get_db_connection()
+    cursor = conn.execute("SELECT * FROM tasks")
+    tasks = cursor.fetchall()
+    conn.close()
+    return [TaskRead(**dict(row)) for row in tasks]
+    # raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Not implemented")
 
 
 # UPDATE ROUTE data is sent in the body of the request and the task_id is in the URL
@@ -67,7 +78,21 @@ async def update_task(task_id: int, task_data: TaskCreate):
     Returns:
         TaskRead: The updated task data
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Not implemented")
+    conn = get_db_connection()
+    cursor = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
+    existing = cursor.fetchone()
+    if not existing:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    conn.execute(
+        "UPDATE tasks SET title = ?, description = ?, completed = ? WHERE id = ?",
+        (task_data.title, task_data.description, task_data.completed, task_id)
+    )
+    conn.commit()
+    conn.close()
+    return TaskRead(id=task_id, **task_data.model_dump())
+    # raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Not implemented")
 
 
 # DELETE ROUTE task_id is in the URL
@@ -82,4 +107,15 @@ async def delete_task(task_id: int):
     Returns:
         dict: A message indicating that the task was deleted successfully
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Not implemented")
+    conn = get_db_connection()
+    cursor = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
+    existing = cursor.fetchone()
+    if not existing:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+    conn.commit()
+    conn.close()
+    return {"message": f"Task {task_id} deleted successfully"}
+    # raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Not implemented")

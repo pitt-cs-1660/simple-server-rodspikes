@@ -2,12 +2,15 @@
 # This file is used by the server.py file to connect to the database. Do not alter this file.
 ############################################
 import sqlite3
-
+import os
 # sqlite3 database file path
 DATABASE_PATH = "./tasks.db"
 
 
 def init_db():
+    # print("Current working directory:", os.getcwd())
+    # print("Database path:", DATABASE_PATH)
+    # print("Exists?", os.path.exists(DATABASE_PATH))
     with sqlite3.connect(DATABASE_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute('''
